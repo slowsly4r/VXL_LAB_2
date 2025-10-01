@@ -55,11 +55,9 @@ void display7SEG(int num);
 void update7SEG(int index);
 void updateClockBuffer();
 void setSegTimer(int duration);
-void segTimer_run();
 void setDotTimer(int duration);
-void dotTimer_run();
 void setClockTimer(int duration);
-void clockTimer_run();
+void timer_run();
 void ledClear();
 /* USER CODE END PFP */
 
@@ -284,9 +282,7 @@ static void MX_GPIO_Init(void)
 /* USER CODE BEGIN 4 */
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
-	segTimer_run();
-	dotTimer_run();
-	clockTimer_run();
+	timer_run();
 }
 void display7SEG(int num) {
 		/*
@@ -347,27 +343,23 @@ void setSegTimer(int duration) {
 	segTimer_counter = duration / TIMER_CYCLE;
 	segTimer_flag = 0;
 }
-void segTimer_run() {
-	if (segTimer_counter > 0) {
-		segTimer_counter--;
-		if (segTimer_counter == 0) segTimer_flag = 1;
-	}
-}
 void setDotTimer(int duration) {
 	dotTimer_counter = duration / TIMER_CYCLE;
 	dotTimer_flag = 0;
-}
-void dotTimer_run() {
-	if (dotTimer_counter > 0) {
-		dotTimer_counter--;
-		if (dotTimer_counter == 0) dotTimer_flag = 1;
-	}
 }
 void setClockTimer(int duration){
 	clockTimer_counter = duration / TIMER_CYCLE;
 	clockTimer_flag = 0;
 }
-void clockTimer_run(){
+void timer_run(){
+	if (segTimer_counter > 0) {
+		segTimer_counter--;
+		if (segTimer_counter == 0) segTimer_flag = 1;
+	}
+	if (dotTimer_counter > 0) {
+		dotTimer_counter--;
+		if (dotTimer_counter == 0) dotTimer_flag = 1;
+	}
 	if (clockTimer_counter > 0) {
 		clockTimer_counter--;
 		if (clockTimer_counter == 0) clockTimer_flag = 1;
