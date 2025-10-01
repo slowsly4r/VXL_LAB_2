@@ -52,6 +52,7 @@ static void MX_GPIO_Init(void);
 static void MX_TIM2_Init(void);
 /* USER CODE BEGIN PFP */
 void display7SEG(int num);
+void update7SEG(int index);
 void ledClear();
 /* USER CODE END PFP */
 
@@ -62,8 +63,11 @@ enum segState {seg0 = 0, seg1 = 1, seg2 = 2, seg3 = 3};
 enum segState seg = seg0;
 // Create an enable pins array to control all 4 seven-segment
 int controll7SegPin[4] = {EN0_Pin, EN1_Pin, EN2_Pin, EN3_Pin};
-int dotCounter = 100;
 int segCounter = 50;
+int dotCounter = 100;
+const int MAX_LED = 4;
+int index_led = 0;
+int led_buffer[4] = {1, 2, 3, 4};
 /* USER CODE END 0 */
 
 /**
@@ -242,33 +246,9 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 		HAL_GPIO_TogglePin(LED_RED_GPIO_Port, LED_RED_Pin);
 	}
 	if (segCounter <= 0) {
-		ledClear();
-		switch (seg) {
-		case seg0: // SEVEN SEGMENT 1 ON, DISPLAY NUMBER 1 ON SEVEN SEGMENT 1
-			segCounter = 50;
-			seg = seg1;
-			HAL_GPIO_WritePin(GPIOA, controll7SegPin[seg0], RESET);
-			display7SEG(1);
-			break;
-		case seg1: // SEVEN SEGMENT 2 ON, DISPLAY NUMBER 2 ON SEVEN SEGMENT 2
-			segCounter = 50;
-			seg = seg2;
-			HAL_GPIO_WritePin(GPIOA, controll7SegPin[seg1], RESET);
-			display7SEG(2);
-			break;
-		case seg2: // SEVEN SEGMENT 3 ON, DISPLAY NUMBER 3 ON SEVEN SEGMENT 3
-			segCounter = 50;
-			seg = seg3;
-			HAL_GPIO_WritePin(GPIOA, controll7SegPin[seg2], RESET);
-			display7SEG(3);
-			break;
-		case seg3: // SEVEN SEGMENT 4 ON, DISPLAY NUMBER 0 ON SEVEN SEGMENT 4
-			segCounter = 50;
-			seg = seg0;
-			HAL_GPIO_WritePin(GPIOA, controll7SegPin[seg3], RESET);
-			display7SEG(0);
-			break;
-		}
+		segCounter = 50;
+		update7SEG(index_led++);
+		if(index_led >= 4) index_led = 0;
 	}
 }
 void display7SEG(int num) {
@@ -286,12 +266,39 @@ void display7SEG(int num) {
 		 * 8 => 1 0 0 0 0 0 0 0 => 0x80
 		 * 9 => 1 0 0 1 0 0 0 0 => 0x90
 		 */
-	  char ledNum[10] = {0xC0, 0xF9, 0xA4, 0xB0, 0x99, 0x92, 0x82, 0xF8, 0x80, 0x90};
-	  for (int i = 0; i < 7; i++) {
-		  // Shift GPIO_PIN_0 left by i, right shift so the bit for segment i is in the LSB position
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0 << i, (ledNum[num] >> i) & 1);
-	  }
- }
+	char ledNum[10] = {0xC0, 0xF9, 0xA4, 0xB0, 0x99, 0x92, 0x82, 0xF8, 0x80, 0x90};
+	for (int i = 0; i < 7; i++) {
+		// Shift GPIO_PIN_0 left by i, right shift so the bit for segment i is in the LSB position
+		HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0 << i, (ledNum[num] >> i) & 1);
+	}
+}
+void update7SEG(int index) {
+	ledClear();
+	switch (index){
+	case 0:
+		// Display the first 7 SEG with led_buffer [0]
+		HAL_GPIO_WritePin(GPIOA, controll7SegPin[index], RESET);
+		display7SEG(led_buffer[0]);
+		break;
+	case 1:
+		// Display the second 7 SEG with led_buffer [1]
+		HAL_GPIO_WritePin(GPIOA, controll7SegPin[index], RESET);
+		display7SEG(led_buffer[1]);
+		break;
+	case 2:
+		// Display the third 7 SEG with led_buffer [2]
+		HAL_GPIO_WritePin(GPIOA, controll7SegPin[index], RESET);
+		display7SEG(led_buffer[2]);
+		break;
+	case 3:
+		// Display the fourth 7 SEG with led_buffer [3]
+		HAL_GPIO_WritePin(GPIOA, controll7SegPin[index], RESET);
+		display7SEG(led_buffer[3]);
+		break;
+	default:
+		break;
+	}
+}
 void ledClear() {
 	HAL_GPIO_WritePin(GPIOA, EN0_Pin | EN1_Pin | EN2_Pin | EN3_Pin, SET);
 	HAL_GPIO_WritePin(GPIOB, SEG0_Pin | SEG1_Pin | SEG2_Pin |
