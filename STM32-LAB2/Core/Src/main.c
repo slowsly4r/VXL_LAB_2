@@ -54,7 +54,9 @@ static void MX_TIM2_Init(void);
 void display7SEG(int num);
 void update7SEG(int index);
 void updateClockBuffer();
-void setTimer0(int duration);
+void setSegTimer(int duration);
+void setDotTimer(int duration);
+void setClockTimer(int duration);
 void timer_run();
 void ledClear();
 /* USER CODE END PFP */
@@ -66,13 +68,16 @@ enum segState {seg0 = 0, seg1 = 1, seg2 = 2, seg3 = 3};
 enum segState seg = seg0;
 // Create an enable pins array to control all 4 seven-segment
 int controll7SegPin[4] = {EN0_Pin, EN1_Pin, EN2_Pin, EN3_Pin};
-int dotCounter = 100;
 const int MAX_LED = 4;
 int index_led = 0;
 int led_buffer[4] = {1, 2, 3, 4};
 int hour = 15, minute = 8, second = 50;
-int timer0_counter = 0;
-int timer0_flag = 0;
+int segTimer_counter = 0;
+int segTimer_flag = 0;
+int dotTimer_counter = 0;
+int dotTimer_flag = 0;
+int clockTimer_counter = 0;
+int clockTimer_flag = 0;
 int TIMER_CYCLE = 10;
 /* USER CODE END 0 */
 
@@ -106,7 +111,9 @@ int main(void)
   MX_GPIO_Init();
   MX_TIM2_Init();
   /* USER CODE BEGIN 2 */
-  setTimer0(1000);
+  setSegTimer(250);
+  setDotTimer(500);
+  setClockTimer(1000);
   HAL_TIM_Base_Start_IT(&htim2);
   /* USER CODE END 2 */
 
@@ -114,24 +121,35 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-	  if (timer0_flag == 1) {
+	  // UPDATE SEVEN-SEGMENTS
+	  if (segTimer_flag == 1) {
+		  updateClockBuffer();
+		  update7SEG(index_led++);
+		  if (index_led >= 4) index_led = 0;
+		  setSegTimer(250);
+	  }
+	  // UPDATE LED RED AND DOT
+	  if (dotTimer_flag == 1) {
+		  HAL_GPIO_TogglePin(DOT_GPIO_Port, DOT_Pin);
 		  HAL_GPIO_TogglePin(LED_RED_GPIO_Port, LED_RED_Pin);
+		  setDotTimer(500);
+	  }
+	  // UPDATE CLOCK
+	  if (clockTimer_flag == 1) {
 		  second++;
 		  if (second >= 60) {
 			  second = 0;
 			  minute++;
 		  }
-		  if (minute >= 60) {
+		  if(minute >= 60) {
 			  minute = 0;
 			  hour++;
-		  }
-		  if (hour >=  24) {
+		   }
+		   if(hour >= 24){
 			  hour = 0;
-		  }
-		  update7SEG(index_led++);
+		   }
 		  updateClockBuffer();
-		  if(index_led >= 4) index_led = 0;
-		  setTimer0(1000);
+		  setClockTimer(1000);
 	  }
     /* USER CODE END WHILE */
 
@@ -239,7 +257,7 @@ static void MX_GPIO_Init(void)
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOB, SEG0_Pin|SEG1_Pin|SEG2_Pin|SEG3_Pin
-                          |SEG5_Pin|SEG6_Pin, GPIO_PIN_RESET);
+                          |SEG4_Pin|SEG5_Pin|SEG6_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pins : DOT_Pin LED_RED_Pin EN0_Pin EN1_Pin
                            EN2_Pin EN3_Pin */
@@ -251,18 +269,13 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
   /*Configure GPIO pins : SEG0_Pin SEG1_Pin SEG2_Pin SEG3_Pin
-                           SEG5_Pin SEG6_Pin */
+                           SEG4_Pin SEG5_Pin SEG6_Pin */
   GPIO_InitStruct.Pin = SEG0_Pin|SEG1_Pin|SEG2_Pin|SEG3_Pin
-                          |SEG5_Pin|SEG6_Pin;
+                          |SEG4_Pin|SEG5_Pin|SEG6_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
-
-  /*Configure GPIO pin : SEG4_Pin */
-  GPIO_InitStruct.Pin = SEG4_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_ANALOG;
-  HAL_GPIO_Init(SEG4_GPIO_Port, &GPIO_InitStruct);
 
 }
 
@@ -270,11 +283,6 @@ static void MX_GPIO_Init(void)
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
 	timer_run();
-	dotCounter--;
-	if (dotCounter <= 0) {
-		dotCounter = 100;
-		HAL_GPIO_TogglePin(DOT_GPIO_Port, DOT_Pin);
-	}
 }
 void display7SEG(int num) {
 		/*
@@ -331,14 +339,30 @@ void updateClockBuffer() {
 	led_buffer[2] = minute / 10;
 	led_buffer[3] = minute % 10;
 }
-void setTimer0(int duration) {
-	timer0_counter = duration / TIMER_CYCLE;
-	timer0_flag = 0;
+void setSegTimer(int duration) {
+	segTimer_counter = duration / TIMER_CYCLE;
+	segTimer_flag = 0;
 }
-void timer_run() {
-	if (timer0_counter > 0) {
-		timer0_counter--;
-		if (timer0_counter == 0) timer0_flag = 1;
+void setDotTimer(int duration) {
+	dotTimer_counter = duration / TIMER_CYCLE;
+	dotTimer_flag = 0;
+}
+void setClockTimer(int duration){
+	clockTimer_counter = duration / TIMER_CYCLE;
+	clockTimer_flag = 0;
+}
+void timer_run(){
+	if (segTimer_counter > 0) {
+		segTimer_counter--;
+		if (segTimer_counter == 0) segTimer_flag = 1;
+	}
+	if (dotTimer_counter > 0) {
+		dotTimer_counter--;
+		if (dotTimer_counter == 0) dotTimer_flag = 1;
+	}
+	if (clockTimer_counter > 0) {
+		clockTimer_counter--;
+		if (clockTimer_counter == 0) clockTimer_flag = 1;
 	}
 }
 void ledClear() {
